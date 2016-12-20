@@ -1,0 +1,1194 @@
+<?xml version="1.0"?>
+<!--
+  - $Header: /cvsrepos/mmsv50/mmsv50/buildSC.xml,v 1.1.12.2 2016/09/16 07:22:38 ronyh Exp $
+  -
+  - build.xml
+  -
+  - Copyright (c) 2014, PT. Mitrais, Kuta, Bali, Indonesia.
+  - All rights reserved.
+  -->
+<project name="mms-ppsb-poly" basedir="." default="usage">
+    <!-- Load properties files for changeable values -->
+    <property file="build.properties"/>
+    <!--
+    <tstamp>
+        <format property="build.time" pattern="yyyy-MM-dd HH:mm:ss"/>
+    </tstamp>
+    -->
+    <!-- Basic properties -->
+	<property name="product.name" 	value="mms"/>
+	<property name="edition.name"   value="MMS-LITE"/> <!-- MMS-Polyclinic | MMS-HIS | MMS-Pharmacy | MMS-Billing --> <!-- replaced at Hudson build properties -->
+	<property name="deploy.name" 	value="local"/> <!-- local | development | testing | demo --> <!-- replaced at Hudson build properties -->
+	<property name="use.dummydata.file"	value="yes"/> <!-- yes | no --> <!-- replaced at Hudson build properties -->
+	
+	<!-- Java -->
+	<property name="src.java.dir" 	value="src/java"/>
+	<property name="src.ohs.dir" 	value="src/ohs"/>
+	<property name="src.java_sc.dir" value="src/java_sc"/>
+    <property name="src.ohs_sc.dir" value="src/ohs_sc"/>
+	<property name="src.java_replace.dir" value="src/java_replace"/>
+    <property name="src.ohs_replace.dir" value="src/ohs_replace"/>
+	
+	<!-- JUnit -->
+	<property name="src.test.dir" 	value="src/test"/>
+
+	<!-- Project libraries -->
+	<property name="lib.dir" 		value="lib"/>
+    <property name="devlib.dir" 	value="devlib"/>
+	<property name="libsc.dir" 		value="lib_sc"/>
+    <property name="lmslib.dir" 	value="lmslib"/>
+
+	<!-- jsp, styles, scripts, images, FCKeditor -->
+	<property name="web.dir" 		value="src/web"/>
+    <property name="web.replace.dir" value="src/web_replace"/>
+	
+	<!-- Project resources
+		- src/resources/*.properties => properties file
+		- src/resources/*.xml => configuration (spring, struts, common validator)
+		- src/resources/*.tld => taglib
+		- src/resources/*validation*.xml => validator definition (common validator)
+		- src/resources/help => Online Help files
+		- src/resources/sql => DDL, DML
+		- src/resources/radscaper => Dicom Viewer (Third-Party) 
+	 -->
+	<property name="resources.dir" 	value="src/resources"/>
+	<property name="resources.replace.dir" value="src/resources_replace"/>
+    
+	<!-- no such directory, replaced by src/resources/help -->
+    <property name="help.dir" value="help"/>
+	<property name="readme.dir" value="readme/"/>
+	<!-- generated -->
+	<property name="generated.dir" 			value="generated"/>
+	<property name="generated.template.dir" value="${generated.dir}/templates"/>
+	<property name="generated.configurable" value="${generated.dir}/configurable"/>
+	<property name="generated.java.dir" value="${generated.dir}/java"/>
+	<property name="generated.ohs.dir" value="${generated.dir}/ohs"/>
+
+	<!-- build directories -->
+	<property name="build.dir" 			value="build/${product.name}/${deploy.name}"/>
+	<property name="deploy.dir" 		value="deploy"/>
+	<property name="exploded.dir" 		value="${build.dir}/exploded"/>
+	<property name="war.dir" 			value="${build.dir}/war"/>
+	<property name="integration.dir" 	value="${build.dir}/database"/>
+	
+	<!-- build properties -->
+	<property name="common.property.file" 	value="${deploy.dir}/common.properties"/>
+	<property name="kms.property.file" 	value="${resources.dir}/kms.properties"/>
+	<property name="deploy.property.file" 	value="${deploy.dir}/${deploy.name}_server.properties"/>
+	<property name="edition.property.file" 	value="${deploy.dir}/build_${product.name}.properties"/>
+	<property file="${common.property.file}"/>
+	<property file="${kms.property.file}"/>
+	<property file="${deploy.property.file}"/>
+	<property environment="env"/>
+
+	<!-- Hibernate Generator -->
+	<property name="generated.ddl.dir" value="${generated.dir}/ddl"/>
+	<property name="generated.vo.dir" value="${generated.dir}/java"/>
+	
+	<!-- Database Integration File -->
+	<property name="hudson.setupETLJobScheduler.file" 		value="${integration.dir}/00 Setup ETL Job Scheduler.sql"></property>
+	<property name="hudson.setupdatabase.file" 		value="${integration.dir}/01 Setup Database.sql"></property>
+	<property name="hudson.mandatatorytable.file"  	value="${integration.dir}/02 Mandatory Tables.sql"></property>
+	<property name="hudson.nonhbmtable.file"   		value="${integration.dir}/03 Additional Tables.sql"></property>
+	<property name="hudson.additionalddl.file"   	value="${integration.dir}/04 Additional DDL.sql"></property>
+	<property name="hudson.function.file" 			value="${integration.dir}/05-1 Functions and Store Procedures.sql"></property>
+	<property name="hudson.function.sc.file"	 	value="${integration.dir}/05-2 Functions and Store Procedures SC.sql"></property>
+	<property name="hudson.view.file" 				value="${integration.dir}/06 Views.sql"></property>
+	<property name="hudson.requireddata.file" 		value="${integration.dir}/07-1 Required Data.sql"></property>
+	<property name="hudson.requireddata.sc.file" 	value="${integration.dir}/07-2 Required Data SC.sql"></property>
+	<property name="hudson.dummydata.file" 			value="${integration.dir}/08-1 Dummy Data.sql"></property>
+	<property name="hudson.dummydata.sc.file" 		value="${integration.dir}/08-2 Dummy Data SC.sql"></property>
+	<property name="hudson.snomed.file"  			value="${integration.dir}/09 Snomed Data.sql"></property>
+	<property name="hudson.setupReportingdatabase.file" 		value="${integration.dir}/10 Setup Reporting Database.sql"></property>
+	<property name="hudson.requiredReportingdata.file" 		value="${integration.dir}/13 Required Reporting Data.sql"></property>
+	<property name="hudson.function.reporting.file" 			value="${integration.dir}/12 Functions and Store Procedures For Reporting.sql"></property>
+	<property name="hudson.mandatoryreportingtable.file"  	value="${integration.dir}/11 Mandatory Reporting Tables.sql"></property>
+	<!-- Quartz property -->
+	<property name="quartz_property.file" value="../kmsv30/quartz_deploy_env_test_sql_server.properties"/>
+
+	<!-- ocpsoft -->
+	<property name="ocp.src.dir" value="${resources.dir}/common/ocpsoft"/>
+	<property name="ocp.dest.dir" value="com/ocpsoft/pretty/time"/>
+
+	<!-- ETL property -->
+	<property name="ETL.dest" 				value="${ETL_PATH}"/>
+	<property name="ETL.source" 			value="${resources.dir}/ETL"/>
+	<property name="ETL.replace.source" 	value="${resources.replace.dir}/ETL"/>
+	
+	<!-- License property -->
+	<property name="license.dest"	value="${license.dir}"/>
+	<property name="license.source"	value="${resources.dir}/license/${edition.name}"/>
+	
+	<!-- Compiler option -->
+    <property name="build.compiler.source.version" value="1.6"/>
+    <property name="build.compiler.target.version" value="1.6"/>
+    <property name="build.compiler.deprecation"    value="true"/>
+    <property name="build.compiler.debug"          value="true"/>
+
+    <!-- List of libraries that is required for deployment -->
+    <fileset id="deployment-libs" dir="${lib.dir}" includes="**/*.jar"/>
+    <fileset id="lms-libs" dir="${lmslib.dir}/${SERVER_PLATFORM}" includes="**/*.jar"/>
+
+    <!-- List of libraries that is for development only -->
+    <fileset id="development-libs" dir="${devlib.dir}" includes="**/*.jar"/>
+	
+	<!-- List of libraries for client spesific -->
+	<fileset id="development-libs_sc" dir="${libsc.dir}" includes="**/*.jar"/>
+
+    <path id="master-classpath">
+        <fileset refid="deployment-libs"/>
+        <fileset refid="lms-libs"/>
+        <fileset refid="development-libs"/>
+    	<fileset refid="development-libs_sc"/>
+        <!-- We need the servlet API classes:       -->
+        <!--  for Tomcat 4.1 user servlet.jar       -->
+        <!--  for Tomcat 5.0 user servlet-api.jar   -->
+        <!--  for Other app server - check the docs -->
+        <!--<fileset dir="${tomcat.home}/common/lib">
+            <include name="servlet*.jar"/>
+        </fileset>-->
+        <pathelement path="${exploded.dir}/WEB-INF/classes"/>
+    </path>
+
+    <!-- Filter for text replacement -->
+    <filterset id="kms.filter">
+    	<filtersfile file="${common.property.file}"/>
+    	<filtersfile file="${deploy.property.file}"/>
+    	<filtersfile file="${edition.property.file}"/>
+		<filter token="VERSION" value="${version}"/>
+        <filter token="EDITION_NAME" value="${edition.name}"/>
+    	<filter token="BUILD_NUMBER" value="${deploy.name}.${build.number}"/>
+    </filterset>
+
+    <target name="usage">
+        <echo message=""/>
+        <echo message="${name} build file"/>
+        <echo message="---------------------------------------"/>
+        <echo message=""/>
+        <echo message="Available targets are:"/>
+        <echo message=""/>
+        <echo message="compile       					--> Compile the java files"/>
+        <echo message="build         					--> Build the application"/>
+    	
+        <echo message="deploy        					--> Deploy the application as directory"/>
+    	<echo message="undeploy		 					--> Remove web application"/>
+    	<echo message="war    		 					--> Deploy the application as a WAR file"/>
+        <echo message="deploywar     					--> Deploy the application to application server"/>
+    	
+        <echo message="clean         					--> Clean build area"/>
+    	
+    	<echo message="ciSetupDatabaseIntegrationFile   --> Prepare DDL and DML"/>
+    	<echo message="ciDeployDatabase     			--> Execute DDL and DML"/>
+    	<echo message="ciDeployServer     				--> Deploy Application"/>
+    	<echo message="sendEmail     					--> Send Notification Email"/>
+
+    	<echo message="runQuartz     					--> Running Quartz Scheduler independently"/>
+        <echo message="prepareQuartz 					--> Preparing related files for Quartz scheduler"/>
+        <echo message="quartzBuild   					--> Build applications for Quartz scheduler"/>
+    	
+      	<echo message="settingConfigurableField	 		--> Configure specific field" />
+        <echo message=""/>
+    </target>
+    
+	<!-- =========================================== -->
+    <!--                Standard tasks               -->
+    <!-- =========================================== -->
+	<!-- Create the directories for the build area -->
+    <target name="-prepbuildarea">
+        <mkdir dir="${generated.dir}"/>
+        <mkdir dir="${generated.template.dir}"/>
+        <mkdir dir="${generated.java.dir}"/>
+        <mkdir dir="${generated.ohs.dir}"/>
+        <mkdir dir="${build.dir}"/>
+    	<mkdir dir="${war.dir}"/>
+    	<mkdir dir="${integration.dir}"/>
+        <mkdir dir="${exploded.dir}/WEB-INF"/>
+        <mkdir dir="${exploded.dir}/WEB-INF/classes"/>
+        <mkdir dir="${exploded.dir}/WEB-INF/classes/${ocp.dest.dir}"/>
+        <mkdir dir="${exploded.dir}/WEB-INF/lib"/>
+        <mkdir dir="${exploded.dir}/WEB-INF/mssvc"/>
+        <mkdir dir="${exploded.dir}/WEB-INF/serialized"/>
+    	<mkdir dir="${generated.ddl.dir}"/>
+        <mkdir dir="${generated.vo.dir}"/>
+    </target>
+	
+	<!-- Copy java resources for compiling -->
+    <target name="-prepjavacompile">
+        <copy todir="${generated.java.dir}" preservelastmodified="true">
+          	<fileset dir="${src.java.dir}" includes="**/**"/>
+        </copy>
+        <copy todir="${generated.java.dir}" preservelastmodified="true" overwrite="true">
+            <fileset dir="${src.java_replace.dir}" includes="**/**"/>
+        </copy>
+        <copy todir="${generated.ohs.dir}" preservelastmodified="true">
+            <fileset dir="${src.ohs.dir}" includes="**/**"/>
+        </copy>
+    </target>
+
+	<target name="clean" description="Clean output directories">
+        <delete dir="${build.dir}"/>
+        <delete dir="${generated.dir}"/>
+    </target>
+	
+	<target name="compile" depends="-prepbuildarea,-prepjavacompile,ciSetupConfidentalConfiguration" description="Compiles source">
+        <javac destdir="${exploded.dir}/WEB-INF/classes"
+               classpathref="master-classpath"
+               target="${build.compiler.target.version}"
+               source="${build.compiler.source.version}"
+               deprecation="${build.compiler.deprecation}"
+               debug="${build.compiler.debug}"
+               failonerror="true"
+               memoryInitialSize="96m"
+               memoryMaximumSize="700m"
+               fork="true">
+            <src path="${generated.java.dir}"/>
+            <src path="${generated.ohs.dir}"/>
+	    	<src path="${src.java_sc.dir}"/>
+        </javac>
+    </target>
+
+	<taskdef name="jspcompressor" classname="com.googlecode.jspcompressor.ant.task.CompressJspTask" classpath="${devlib.dir}/jspcompressor-0.1.2.jar" />
+
+	<target name="build" depends="compile, compileJR, settingConfigurableFields" description="build the whole application">
+        <!--<buildnumber/>-->
+    	<tstamp/>
+    	<filterset id="date.filter">
+    	    	<filter token="BUILD_DATE" value="${DSTAMP}.${TSTAMP}"/>
+    	 </filterset>
+
+        <!-- Copy the libraries -->
+        <copy todir="${exploded.dir}/WEB-INF/lib" preservelastmodified="true">
+            <fileset refid="deployment-libs"/>
+            <fileset refid="lms-libs"/>
+        	<fileset refid="development-libs_sc"/>
+        </copy>
+
+        <!-- Copy the web files -->
+        <copy todir="${exploded.dir}" preservelastmodified="true" overwrite="false">
+            <fileset dir="${web.dir}" includes="**/*.*" excludes="images/*,images/**/*,msrpt/cvobj/*,msrpt/lpk/*,msrpt/jars/*,FCKeditor/**,script/**"/>
+            <filterset refid="kms.filter"/>
+        	<filterset refid="date.filter"/>
+        </copy>
+
+        <!-- Compress jsp files -->
+		<jspcompressor destdir="${exploded.dir}" compressjs="true" removecomments="false" removejspcomments="true" debug="false" skipstrutsformcomments="true">
+            <fileset dir="${web.dir}" includes="**/priceReportDetail.jsp"/>
+        </jspcompressor>
+
+        <!-- Copy the fckeditor files without FILTER -->
+    	<copy todir="${exploded.dir}" preservelastmodified="true">
+    	      <fileset dir="${web.dir}" includes="FCKeditor/**,script/**"/>
+    	</copy>
+
+        <copy todir="${exploded.dir}" preservelastmodified="true">
+            <fileset dir="${resources.dir}" includes="${help.dir}/*.*"/>
+        	<fileset dir="${resources.dir}" includes="${readme.dir}/*.*"/>
+        </copy>
+
+    	<copy todir="${exploded.dir}" preservelastmodified="true">
+            <fileset dir="${web.dir}" includes="images/*,images/**/*"/>
+        </copy>
+
+       	<copy todir="${exploded.dir}" overwrite="true">       		
+       		<fileset dir="${web.replace.dir}" includes="**/*.*" excludes="images/*,images/**/*,msrpt/cvobj/*,msrpt/lpk/*,msrpt/jars/*" />
+			<filterset refid="kms.filter"/>
+        	<filterset refid="date.filter"/>
+       	</copy>
+		<copy todir="${exploded.dir}" overwrite="true">
+            <fileset dir="${web.replace.dir}" includes="images/*"/>            
+			
+        </copy>
+
+        <!-- copying resource and hbm.xml files -->
+        <copy todir="${exploded.dir}/WEB-INF/classes" preservelastmodified="true" overwrite="true">
+            <fileset dir="${resources.dir}" includes="*.*" excludes="*.properties,*.tld,web.xml,struts-config.xml,validation.xml,validator-rules.xml,EllipseDeployment.xml, ${help.dir}/**/*, ${readme.dir}/*.*"/>
+            <fileset dir="${resources.dir}" includes="*.properties" excludes="genddl-*.properties,hibernate.properties,CCLMApplicationResources.properties,CRMApplicationResources.properties,FacilityApplicationResources.properties,LibraryApplicationResources.properties,MCURegResources.properties,msadmResources.properties,msgnrResources.properties,msmrResources.properties,mssvcResources.properties,SupplyApplicationResources.properties"/>
+            <fileset dir="${generated.java.dir}" includes="**/*.hbm.xml"/>
+            <fileset dir="${generated.ohs.dir}" includes="**/*.hbm.xml"/>
+            <fileset dir="${src.java_replace.dir}" includes="**/*.hbm.xml"/>
+            <filterset refid="kms.filter"/>
+            <filterset refid="date.filter"/>
+        </copy>
+
+		<copy todir="${exploded.dir}/WEB-INF/classes" preservelastmodified="false" overwrite="true">
+        	<!-- for sc dir  -->
+            <fileset dir="${resources.replace.dir}" includes="*.*" />
+            <filterset refid="kms.filter"/>
+            <filterset refid="date.filter"/>
+		</copy>
+    	
+    	<concat destfile="${exploded.dir}/WEB-INF/classes/ApplicationResources.properties" append="false">
+    	    	    <filelist dir="${resources.dir}" files="ApplicationResources.properties"/>
+    	</concat>
+    	<concat destfile="${exploded.dir}/WEB-INF/classes/ApplicationResources.properties" append="true">
+    	    	    <filelist dir="${resources.replace.dir}" files="ApplicationResources.properties"/>
+    	</concat>
+    	<concat destfile="${exploded.dir}/WEB-INF/classes/ApplicationResources_in.properties" append="false">
+    	    	    <filelist dir="${resources.dir}" files="ApplicationResources_in.properties"/>
+    	</concat>
+    	<concat destfile="${exploded.dir}/WEB-INF/classes/ApplicationResources_in.properties" append="true">
+    	    	    <filelist dir="${resources.replace.dir}" files="ApplicationResources_in.properties"/>
+    	</concat>
+
+        <!-- copying tld files -->
+        <copy todir="${exploded.dir}/WEB-INF" preservelastmodified="true">
+            <fileset dir="${resources.dir}" includes="*.tld"/>
+            <fileset dir="${resources.dir}" includes="claim/*,msconf/*,msfac/*,mssup/*,mssvc/*,msadmin/*,ohs/*,msppe/**/*,mp/*,roomregulation/*,dc/*"/>
+           	<!-- for sc dir -->
+            <fileset dir="${resources.replace.dir}" includes="*.tld"/>
+        </copy>
+
+        <!-- copying web.xml file -->
+        <copy todir="${exploded.dir}/WEB-INF" preservelastmodified="true">
+            <fileset dir="${resources.dir}" includes="web.xml,struts-config.xml,validation.xml,validator-rules.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+        <copy todir="${exploded.dir}/WEB-INF" preservelastmodified="true" overwrite="true">
+        	<fileset dir="${resources.replace.dir}" includes="web.xml,struts-config.xml,validation.xml,validator-rules.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+
+        <!-- copying .xml file on WEB-INF/creator for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/creator" preservelastmodified="true">
+            <fileset dir="${resources.dir}/creator" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+
+        <!-- copying .xml file on WEB-INF/mssvc for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/mssvc" preservelastmodified="true">
+            <fileset dir="${resources.dir}/mssvc" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+
+        <!-- copying .xml file on WEB-INF/mslib for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/mslib" preservelastmodified="true">
+            <fileset dir="${resources.dir}/mslib" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+
+    	<!-- copying .xml file on WEB-INF/claim for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/claim" preservelastmodified="true">
+            <fileset dir="${resources.dir}/claim" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+    	
+    	<!-- copying .xml file on WEB-INF/analytics for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/analytics" preservelastmodified="true">
+            <fileset dir="${resources.dir}/analytics" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+    	
+    	<!-- copying .xml file on WEB-INF/nutrition for validation -->
+    	<copy todir="${exploded.dir}/WEB-INF/nutrition" preservelastmodified="true">
+    	   	<fileset dir="${resources.dir}/nutrition" includes="*.xml"/>
+    	    <filterset refid="kms.filter"/>
+    	</copy>
+
+    	<!-- copying .xml file on WEB-INF/mp for validation -->
+        <copy todir="${exploded.dir}/WEB-INF/mp" preservelastmodified="true">
+            <fileset dir="${resources.dir}/mp" includes="*.xml"/>
+            <filterset refid="kms.filter"/>
+        </copy>
+    	<!-- copying SC validation -->
+        <copy todir="${exploded.dir}/WEB-INF" preservelastmodified="true" overwrite="true">        
+            <fileset dir="${resources.replace.dir}" includes="
+            	claim/*,common/*,msadmin/*,
+            	msconf/*,msfac/*,mslib/*,
+            	msfac/*,msppe/*,
+            	mssvc/*,mssup/*,analytics/*,
+            	claim/*,mslib/*,creator/*"/>
+         </copy>
+
+    	
+        <!-- copying JAXB related config files -->
+        <copy todir="${exploded.dir}/WEB-INF/classes" preservelastmodified="true">
+            <fileset dir="${generated.dir}" includes="**/jaxb.properties,**/Configuration.xml"/>
+        </copy>
+    	
+    	<copy todir="${exploded.dir}" overwrite="true">
+    		<fileset dir="${generated.configurable}/web" includes="**/*.*"/>
+    		<filterset refid="kms.filter"/>
+    		<filterset refid="date.filter"/>
+    	</copy>
+    	
+    	<copy todir="${exploded.dir}/WEB-INF" overwrite="true">	
+    		<fileset dir="${generated.configurable}/resources" includes="**/*.*"/>
+    	</copy>
+
+    	<!-- copying copyright license files -->
+    	<copy todir="${exploded.dir}" preservelastmodified="true">
+    		<fileset dir="${basedir}" includes="3rd-party-license.txt"/>
+    	</copy>
+
+        <copy todir="${exploded.dir}/WEB-INF/classes/${ocp.dest.dir}" preservelastmodified="false" overwrite="true">
+            <fileset dir="${ocp.src.dir}" includes="*.xml"/>
+        </copy>
+
+    	<!-- copying Radscaper (Third-Party Dicom Viewer) files -->
+    	<copy todir="${exploded.dir}" preservelastmodified="true">
+            <fileset dir="${resources.dir}/radscaper">
+                <include name="**/*"/>
+            </fileset>
+        </copy>
+    </target>
+	<!-- =========================================== -->
+    <!--                End of Standard tasks        -->
+    <!-- =========================================== -->
+	
+	
+	<!-- =========================================== -->
+    <!--       Application Server Specific tasks     -->
+    <!-- =========================================== -->
+    <target name="deploy" depends="build" description="Deploy application">
+        <copy todir="${deploy.path}/${webapp.name}" preservelastmodified="true">
+            <fileset dir="${exploded.dir}">
+                <include name="**/*.*"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="undeploy" description="Remove web application">
+        <echo>Undeploy application server information (tomcat)</echo>
+        <echo>Manager URL :  ${manager.url} </echo>
+        <echo>Manager Username :  ${manager.username} </echo>
+        <echo>Manager Password :  ${manager.password} </echo>
+        <taskdef name="undeploy"  classname="org.apache.catalina.ant.UndeployTask" classpath="${devlib.dir}/catalina-ant.jar" />
+        <undeploy url="${manager.url}"
+        username="${manager.username}"
+        password="${manager.password}"
+        path="/${product.name}"
+        failonerror="false"/>
+    </target>
+
+    <target name="war" depends="build" description="Create a WAR file">
+        <war destfile="${war.dir}/${webapp.name}.war"
+         webxml="${exploded.dir}/WEB-INF/web.xml" update="true">
+            <fileset dir="${exploded.dir}">
+                <include name="**/*"/>
+            </fileset>
+        </war>
+    </target>
+	
+	<!-- should use Java Options -Xmx512m, otherwise Java heap space occurred -->
+	<target name="deploywar" depends="war" description="Deploy application as a WAR file">
+    	<property name="absolute.war.dir" location="${war.dir}"></property>
+    	<echo>Deploy application server information (tomcat)</echo>
+		<echo>Manager URL :  ${manager.url} </echo>
+		<echo>Manager Username :  ${manager.username} </echo>
+		<echo>Manager Password :  ${manager.password} </echo>
+    	<taskdef name="deploy" classname="org.apache.catalina.ant.DeployTask"  classpath="${devlib.dir}/catalina-ant.jar" />
+        	<deploy url="${manager.url}"
+        	username="${manager.username}"
+        	password="${manager.password}"
+        	path="/${webapp.name}"
+        	war="file:${absolute.war.dir}/${webapp.name}.war"
+        	update="true" />
+	</target>
+	<!-- =========================================== -->
+    <!--  End of Application Server Specific tasks   -->
+    <!-- =========================================== -->
+	
+	
+    <!-- =========================================== -->
+    <!--                JUnit tasks                  -->
+    <!-- =========================================== fix src/test->
+    <target name="-runtest" depends="build">
+        <junit printsummary="true" fork="${junit.fork}"
+           haltonfailure="${junit.haltonfailure}" showoutput="false">
+            <classpath refid="master-classpath"/>
+            <formatter type="${junit.formatter.type}" usefile="${junit.usefile}"/>
+            <jvmarg value="-Dkms.springconf=${kms.springconf}"/>
+            <batchtest todir="${reports.tests}" filtertrace="true">
+                <fileset dir="${build.dir}/WEB-INF/classes"
+                 includes="${test.include}"
+                 excludes="${test.exclude}"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="test-admin" description="Run JUnit Tests for admin package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/admin/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-common" description="Run JUnit Tests for common package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/common/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-config" description="Run JUnit Tests for config package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/config/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-facility" description="Run JUnit Tests for facility package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/facility/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-custom" description="Run JUnit Tests for inco package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/custom/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-intf" description="Run JUnit Tests for intf package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/intf/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-library" description="Run JUnit Tests for library package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/library/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-service" description="Run JUnit Tests for service package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/service/**/*Test.class"/>
+            <param name="test.exclude" value="com/mitrais/kms/service/HearTest.class,com/mitrais/kms/service/LungTest.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-supply" description="Run JUnit Tests for supply package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/supply/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-util" description="Run JUnit Tests for util package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/util/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-web" description="Run JUnit Tests for web package">
+        <antcall target="-runtest">
+            <param name="test.include" value="com/mitrais/kms/web/**/*Test.class"/>
+        </antcall>
+    </target>
+
+    <target name="test-all" depends="test-admin,test-common,test-config,test-facility,test-custom,test-intf,test-library,test-service,test-supply,test-util,test-web"
+            description="Run all Junit TestCases">
+    </target>
+	<!- fix src/test =========================================== -->
+    <!--                End JUnit tasks              -->
+    <!-- =========================================== -->
+	
+	
+	<!-- =========================================== -->
+    <!--                Hibernate tasks              -->
+    <!-- =========================================== -->
+	<!-- Hibernate mapping files location -->
+	<fileset id="hibernate.mapping.java.files" dir="${generated.java.dir}">
+    	<include name="**/*.hbm.xml"/> 
+        <exclude name="**/Msf010.hbm.xml"/>
+        <exclude name="**/Msf071.hbm.xml"/>
+        <exclude name="**/Msf100.hbm.xml"/>
+        <exclude name="**/Msf200.hbm.xml"/>
+        <exclude name="**/Msf220.hbm.xml"/>
+        <exclude name="**/Msf221.hbm.xml"/>
+        <exclude name="**/Msf231.hbm.xml"/>
+        <exclude name="**/Msf600.hbm.xml"/>
+        <exclude name="**/Msf760.hbm.xml"/>
+        <exclude name="**/Msf761.hbm.xml"/>
+        <exclude name="**/Msf762.hbm.xml"/>
+        <exclude name="**/Msf810.hbm.xml"/>
+        <exclude name="**/Msf826.hbm.xml"/>
+        <exclude name="**/Msf829.hbm.xml"/>
+        <exclude name="**/Msf870.hbm.xml"/>
+        <exclude name="**/Msf871.hbm.xml"/>
+        <exclude name="**/Msf874.hbm.xml"/>
+        <exclude name="**/Msf878.hbm.xml"/>
+    </fileset>
+	<fileset id="hibernate.mapping.ohs.files" dir="${generated.ohs.dir}">
+    	<include name="**/*.hbm.xml"/>
+    	<exclude name="**/Msf010.hbm.xml"/>
+	    <exclude name="**/Msf071.hbm.xml"/>
+	    <exclude name="**/Msf100.hbm.xml"/>
+	    <exclude name="**/Msf200.hbm.xml"/>
+	    <exclude name="**/Msf220.hbm.xml"/>
+	    <exclude name="**/Msf221.hbm.xml"/>
+	    <exclude name="**/Msf231.hbm.xml"/>
+	    <exclude name="**/Msf600.hbm.xml"/>
+	    <exclude name="**/Msf760.hbm.xml"/>
+	    <exclude name="**/Msf761.hbm.xml"/>
+	    <exclude name="**/Msf762.hbm.xml"/>
+	    <exclude name="**/Msf810.hbm.xml"/>
+	    <exclude name="**/Msf826.hbm.xml"/>
+	    <exclude name="**/Msf829.hbm.xml"/>
+	    <exclude name="**/Msf870.hbm.xml"/>
+	    <exclude name="**/Msf871.hbm.xml"/>
+	    <exclude name="**/Msf874.hbm.xml"/>
+	    <exclude name="**/Msf878.hbm.xml"/>
+	</fileset>
+
+	<!-- Hibernate tool ant task -->
+	<taskdef name="hibernatetool" classname="org.hibernate.tool.ant.HibernateToolTask" classpathref="master-classpath"/>
+	<taskdef name="schemaexport" classname="org.hibernate.tool.hbm2ddl.SchemaExportTask" classpathref="master-classpath"/>
+		
+	<!-- Generate DDL -->
+    <target name="generateDDL" depends="compile">
+    	<hibernatetool destdir="${generated.ddl.dir}"  >
+    		<classpath refid="master-classpath" />
+    		<configuration propertyfile="${resources.dir}/hibernate.properties">
+    	        <fileset refid="hibernate.mapping.java.files" />
+    			<fileset refid="hibernate.mapping.ohs.files" />	
+    		</configuration>
+    		<hbm2ddl export="false" outputfilename="mssql-ddl.sql"/>
+    	</hibernatetool>
+    </target>
+
+	<!-- Generate Value Object / POJO -->
+    <target name="generateVO">
+    	<hibernatetool destdir="${generated.vo.dir}">
+    		<configuration propertyfile="${resources.dir}/hibernate.properties">
+    	        <fileset refid="hibernate.mapping.java.files" />
+    			<fileset refid="hibernate.mapping.ohs.files" />
+    		</configuration>
+    		<hbm2java/>
+    	</hibernatetool>
+    </target>
+    <target name="generateMetadata">
+		<taskdef name="metadata" classname="com.mitrais.kms.anttask.MetadataTask">
+			<classpath refid="master-classpath" />
+		</taskdef>
+		<metadata
+			driver="${DB_DRIVER}"
+		    url="${DB_URL}"
+		    userid="${DB_USERNAME}"
+		    password="${DB_PASSWORD}">
+    		<configuration propertyfile="${resources.dir}/hibernate.properties">
+    	        <fileset refid="hibernate.mapping.java.files" />
+    			<fileset refid="hibernate.mapping.ohs.files" />
+    		</configuration>
+		</metadata>	
+    </target>
+	<!-- =========================================== -->
+    <!--                End of Hibernate tasks       -->
+    <!-- =========================================== -->
+	
+	
+	<!-- =========================================== -->
+    <!--                Jasper tasks       			 -->
+    <!-- =========================================== -->
+    <!-- JasperReport Compiler -->
+    <taskdef name="jrc" classname="net.sf.jasperreports.ant.JRAntCompileTask">
+      <classpath refid="master-classpath" />
+    </taskdef>
+
+    <target name="compileJR" depends="compile" description="Generate JasperReports template">
+    	<copy todir="${resources.dir}/jrxml" preservelastmodified="true">
+            <fileset dir="${resources.dir}" includes="ApplicationResources.properties"/>
+            <fileset dir="${resources.dir}" includes="ApplicationResources_in.properties"/>
+        </copy>
+        <!-- Commented for Hudson CVS Polling purpose -->
+
+    	<move file="${resources.dir}/jrxml/ApplicationResources.properties" tofile="${resources.dir}/jrxml/AUDITLOG_en_US.properties"/>
+    	<move file="${resources.dir}/jrxml/ApplicationResources_in.properties" tofile="${resources.dir}/jrxml/AUDITLOG_in_ID.properties"/>
+
+    	<jrc srcdir="${resources.replace.dir}/jrxml" destdir="${generated.template.dir}">
+    	    <classpath refid="master-classpath" />
+    	    <include name="*.jrxml"/>
+	    </jrc>
+    	
+    	<jrc srcdir="${resources.dir}/jrxml" destdir="${generated.template.dir}">
+    	    <classpath refid="master-classpath" />
+    	    <include name="*.jrxml"/>
+	    </jrc>
+    	<copy todir="${generated.template.dir}" preservelastmodified="true">
+	       	<fileset dir="${resources.dir}/jrxml" includes="*.properties, *.gif" excludes="*.jrxml"/>
+    		<fileset dir="${resources.replace.dir}/jrxml" includes="*.properties,*.jpg,*.png" excludes="*.jrxml"/>
+ 	    </copy>
+
+    	<concat destfile="${generated.template.dir}/ReportBundle_en_US.properties" append="false">
+    	    	    <filelist dir="${resources.dir}/jrxml" files="ReportBundle_en_US.properties"/>
+    	</concat>
+    	<concat destfile="${generated.template.dir}/ReportBundle_en_US.properties" append="true">
+    	    	    <filelist dir="${resources.replace.dir}/jrxml" files="ReportBundle_en_US.properties"/>
+    	</concat>
+    	<concat destfile="${generated.template.dir}/ReportBundle_in_ID.properties" append="false">
+    	    	    <filelist dir="${resources.dir}/jrxml" files="ReportBundle_in_ID.properties"/>
+    	</concat>
+    	<concat destfile="${generated.template.dir}/ReportBundle_in_ID.properties" append="true">
+    	    	    <filelist dir="${resources.replace.dir}/jrxml" files="ReportBundle_in_ID.properties"/>
+    	</concat>
+	
+        <jar destfile="${exploded.dir}/WEB-INF/lib/${ant.project.name}-report-template.jar" basedir="${generated.template.dir}"/>
+    </target>
+	<!-- =========================================== -->
+    <!--                End of Jasper tasks       	 -->
+    <!-- =========================================== -->
+	<target name="prepareETL" depends="" description="Prepare ETL package">
+    	<mkdir dir="${ETL.dest}"/>
+		<copy todir="${ETL.dest}" overwrite="true" flatten="true">
+            
+			<fileset dir="${ETL.source}"  includes="**/*.dtsx"/>
+            <fileset dir="${ETL.source}" includes="*.dtsConfig"/>
+			<filterset refid="kms.filter"/>
+        </copy>
+
+		
+		<!--replace ETL-->
+		<copy todir="${ETL.dest}" overwrite="true" flatten="true">            
+			<fileset dir="${ETL.replace.source}"  includes="**/*.dtsx" />
+			<fileset dir="${ETL.replace.source}"  includes="*.dtsConfig" />	
+	     </copy>	
+	</target>
+	
+	<!-- =========================================== -->
+    <!--            Prepare License tasks       	 -->
+    <!-- =========================================== -->
+	<target name="prepareLicense" depends="" description="Prepare MMS Product License">		
+		<copy todir="${license.dest}" overwrite="true">
+			<fileset dir="${license.source}"  includes="license.xml"/>
+        </copy>        
+	</target>
+		
+	<!-- =========================================== -->
+    <!--        Continuous Integration tasks 		 -->
+    <!-- =========================================== -->
+	<target name="ciSetupDatabaseIntegrationFile" depends="build, generateDDL, prepareETL, prepareLicense">
+		<tstamp />
+		<filterset id="date.filter">
+			<filter token="DATE" value="${DSTAMP}"/>
+			<filter token="TIME" value="${TSTAMP}"/>
+		</filterset>
+		<property name="ddl_new.dir" location="${resources.dir}/sql/ddl_new"/>
+		<property name="ddl_new.replace.dir" location="${resources.replace.dir}/sql/ddl_new"/>
+		<!--setup sp for job scheduler first-->
+		<copy tofile="${hudson.setupETLJobScheduler.file}" overwrite="true">
+				<fileset dir="${ddl_new.dir}/mssql" includes="sp_start_job_wait.sql"/>
+		</copy>
+		<if >
+			
+			
+			<!-- need to create new db for reporting if needed -->
+			<not><equals arg1="${DB_URL}" arg2="${DB_REPORTING_URL}" /></not>
+			<then>
+				<concat destfile="${hudson.setupETLJobScheduler.file}" append="true" fixlastline="yes">
+				
+					<fileset dir="${ddl_new.dir}/mssql" includes="BatchETLDaily_DifferentDB.sql,BatchETLMonthly.sql"/>
+					
+				</concat>
+			</then>
+			<else>
+				<concat destfile="${hudson.setupETLJobScheduler.file}" append="true" fixlastline="yes">
+				
+					<fileset dir="${ddl_new.dir}/mssql" includes="BatchETLDaily_sameDB.sql,BatchETLMonthly.sql"/>
+					
+				</concat>
+			
+			</else>
+		</if>
+		<replace file="${hudson.setupETLJobScheduler.file}" propertyFile="${deploy.property.file}">
+			<replacefilter token="@ETL_PATH@" value="${ETL_PATH}"/>
+			<replacefilter token="@ETL_DAILY_NAME@" value="${ETL_DAILY_NAME}"/>
+			<replacefilter token="@ETL_MONTHLY_NAME@" value="${ETL_MONTHLY_NAME}"/>
+		</replace>
+		<copy tofile="${hudson.setupdatabase.file}" overwrite="true">
+
+		<fileset dir="${ddl_new.dir}/mssql" includes="setupDatabase.sql"/>
+		
+			<filterset refid="kms.filter"/>
+			<filterset refid="date.filter"/>
+		</copy>
+				
+		<copy tofile="${hudson.mandatatorytable.file}" file="${generated.dir}/ddl/mssql-ddl.sql" overwrite="true" preservelastmodified="false" />
+
+		<exec dir="." executable="${ddl_new.dir}/mssql/function/mergeAll.bat" spawn="false">
+			<arg value="${ddl_new.dir}${file.separator}mssql${file.separator}function${file.separator}"/>
+		</exec>
+		
+		<delete file="${ddl_new.replace.dir}/mssql/function/allFunctionAndSP.sql" />
+		
+		<exec dir="." executable="${ddl_new.replace.dir}/mssql/function/mergeAll.bat" spawn="false">
+			<arg value="${ddl_new.replace.dir}${file.separator}mssql${file.separator}function${file.separator}"/>
+		</exec>
+		
+		<copy tofile="${hudson.function.file}">
+			<fileset dir="${ddl_new.dir}/mssql/function/" includes="allFunctionAndSP.sql"></fileset>
+		</copy>
+
+		<copy tofile="${hudson.function.sc.file}">
+			<fileset dir="${ddl_new.replace.dir}/mssql/function/" includes="allFunctionAndSP.sql"></fileset>
+		</copy>
+			
+		<delete file="${hudson.nonhbmtable.file}" />
+		<concat destfile="${hudson.nonhbmtable.file}" append="true" >
+			<fileset dir="${ddl_new.dir}/mssql/table" includes="*" />
+		</concat>
+
+		<delete file="${hudson.additionalddl.file}" />
+		<concat destfile="${hudson.additionalddl.file}" append="true">
+			<fileset dir="${ddl_new.dir}/mssql/" includes="collationSetup.sql" />
+			<fileset dir="${ddl_new.dir}/mssql/" includes="queryTuning.sql" />
+			<!-- <fileset dir="${ddl_new.dir}/mssql/" includes="setupCDC.sql" />  -->
+		</concat>		
+		
+		<delete file="${hudson.view.file}" />
+		<concat destfile="${hudson.view.file}" append="true">
+				<fileset dir="${ddl_new.dir}/mssql/view" includes="*"/>
+		</concat>
+
+		<taskdef name="dmlConverter" classname="com.mitrais.kms.anttask.DMLConverterTask">
+			<classpath refid="master-classpath" />
+		</taskdef>
+
+		<property name="dml_new.dir" location="${resources.dir}/sql/dml30_new"/>
+		<property name="dml_new_replace.dir" location="${resources.replace.dir}/sql/dml30_new"/>
+		<property name="dml_dummy_new.dir" location="${resources.dir}/sql/dml_dummy_new"/>
+		<property name="dml_dummy_new_replace.dir" location="${resources.replace.dir}/sql/dml_dummy_new"/>
+		<dmlConverter fromfile="${dml_new.dir}/mergeAll.txt" tofile="${hudson.requireddata.file}" editionName="${edition.name}" />
+		<dmlConverter fromfile="${dml_new_replace.dir}/mergeAll.txt" tofile="${hudson.requireddata.sc.file}"  editionName="${edition.name}" />
+
+		<property name="ddl_dummy_new.dir" location="${resources.dir}/sql/ddl_dummy_new"/>
+		<dmlConverter fromfile="${dml_dummy_new.dir}/mergeAll.txt" tofile="${hudson.dummydata.file}"  editionName="${edition.name}" />
+		<dmlConverter fromfile="${dml_dummy_new_replace.dir}/mergeAll.txt" tofile="${hudson.dummydata.sc.file}"  editionName="${edition.name}" />
+
+		<concat destfile="${hudson.dummydata.file}" append="true" >
+				<fileset dir="${dml_dummy_new.dir}" includes="update_facl_hist.sql"/>
+		</concat>
+		
+		<concat destfile="${hudson.dummydata.sc.file}" append="true" >
+				<fileset dir="${dml_dummy_new_replace.dir}" includes="data_migration_testing.sql"/>
+		</concat>		
+		
+		<copy tofile="${hudson.snomed.file}" overwrite="true">
+
+		<fileset dir="${ddl_new.dir}/mssql" includes="SnomedDataMigration.sql"/>
+			<filterset refid="kms.filter"/>
+		</copy>
+		
+		<!-- Reporting DDL setup -->
+		<copy tofile="${hudson.setupReportingdatabase.file}" overwrite="true">
+
+		<fileset dir="${ddl_new.dir}/mssql" includes="setupReportingDatabase.sql"/>
+		
+			<filterset refid="kms.filter"/>
+			<filterset refid="date.filter"/>
+		</copy>
+		<copy tofile="${hudson.mandatoryreportingtable.file}" file="${resources.dir}/sql/ddl_new/mssql/setupReportingReferenceMasterTables.sql" overwrite="true" preservelastmodified="false" />
+		<concat destfile="${hudson.mandatoryreportingtable.file}" append="true" >
+				<fileset dir="${ddl_new.dir}/mssql/table" includes="KMS_KPI*.sql"/>
+				<fileset dir="${ddl_new.dir}/mssql/table" includes="KMS_GOVRPT_DEF.sql"/>
+				<fileset dir="${ddl_new.dir}/mssql/table" includes="KMS_GOVRPT_MAPPING.sql"/>
+		</concat>
+		<exec dir="." executable="${ddl_new.dir}/mssql/function/mergeForReporting.bat" spawn="false">
+			<arg value="${ddl_new.dir}${file.separator}mssql${file.separator}function${file.separator}"/>
+		</exec>
+		<copy tofile="${hudson.function.reporting.file}">
+			<fileset dir="${ddl_new.dir}/mssql/function/" includes="allFunctionAndSPForReporting.sql"></fileset>
+		</copy>
+		
+		<dmlConverter fromfile="${dml_new.dir}/mergeReportingReference.txt" tofile="${hudson.requiredReportingdata.file}" editionName="${edition.name}" />
+	</target>
+
+	<target name="ciDeployDatabase" depends="ciSetupDatabaseIntegrationFile">
+		<if>
+			<isset property="DB_ADMIN_URL"/>
+			<then>
+			</then>
+			<else>
+				<property file="${deploy.dir}/${deploy.name}_server.properties"/>
+			</else>
+		</if>
+		<echo>Deploy database information</echo>
+		<echo>Admin URL : ${DB_ADMIN_URL}</echo>
+		<echo>Admin Username: ${DB_ADMIN_USERNAME}</echo>
+		<echo>DB URL : ${DB_URL}</echo>
+		<echo>DB Name : ${DB_NAME}</echo>
+		<echo>Username : ${DB_USERNAME}</echo>
+		<echo>Password : ${DB_PASSWORD}</echo>
+		<echo>Encrypted Password : ${DB_ENCRYPTED_PASSWORD}</echo>
+		<sql
+	    driver="${DB_DRIVER}"
+	    url="${DB_ADMIN_URL}"
+	    userid="${DB_ADMIN_USERNAME}"
+	    password="${DB_ADMIN_PASSWORD}"
+		delimiter="GO" autocommit="true" >
+	    <classpath refid="master-classpath" />
+	  		<transaction  src="${hudson.setupETLJobScheduler.file}" />
+		</sql>
+		<sql
+	    driver="${DB_DRIVER}"
+	    url="${DB_ADMIN_URL}"
+	    userid="${DB_ADMIN_USERNAME}"
+	    password="${DB_ADMIN_PASSWORD}" delimiter="GO" autocommit="true" >
+	    <classpath refid="master-classpath" />
+	  		<transaction  src="${hudson.setupdatabase.file}" />
+		</sql>
+		
+		<echo>Executing DDL SQL </echo>
+		<sql
+		    driver="${DB_DRIVER}"
+		    url="${DB_URL}"
+		    userid="${DB_USERNAME}"
+		    password="${DB_PASSWORD}" delimiter="GO" autocommit="true" >
+		    	<classpath refid="master-classpath" />
+		  		<transaction  src="${hudson.mandatatorytable.file}" />
+				<transaction  src="${hudson.nonhbmtable.file}" />
+				<transaction  src="${hudson.additionalddl.file}" />		
+				<transaction  src="${hudson.function.file}" />
+				<transaction  src="${hudson.function.sc.file}" />
+				<transaction  src="${hudson.view.file}" />
+		</sql>
+		
+		
+		<echo>Executing DML SQL </echo>
+		<if>
+			<istrue value="${use.dummydata.file}"/>		
+			<then>
+				<sql
+					    driver="${DB_DRIVER}"
+					    url="${DB_URL}"
+					    userid="${DB_USERNAME}"
+					    password="${DB_PASSWORD}" delimiter=";" autocommit="true" onerror="continue" >
+					    <classpath refid="master-classpath" />
+						<transaction  src="${hudson.requireddata.file}" />
+						<transaction  src="${hudson.requireddata.sc.file}" />
+						<transaction  src="${hudson.dummydata.file}" />
+						<transaction  src="${hudson.dummydata.sc.file}" />
+				</sql>
+			</then>
+			<else>
+				<sql
+					    driver="${DB_DRIVER}"
+					    url="${DB_URL}"
+					    userid="${DB_USERNAME}"
+					    password="${DB_PASSWORD}" delimiter=";" autocommit="true" onerror="continue" >
+					    <classpath refid="master-classpath" />
+						<transaction  src="${hudson.requireddata.file}" />
+						<transaction  src="${hudson.requireddata.sc.file}" />
+				</sql>
+			</else>
+		</if>
+		
+		<antcall target="generateMetadata"/>
+				
+		<echo>Executing Snomed Data </echo>
+		<sql
+	    driver="${DB_DRIVER}"
+	    url="${DB_ADMIN_URL}"
+	    userid="${DB_ADMIN_USERNAME}"
+	    password="${DB_ADMIN_PASSWORD}" delimiter=";" autocommit="true" onerror="continue" >
+	    <classpath refid="master-classpath" />
+				<transaction  src="${hudson.snomed.file}" />
+		</sql>
+				
+		<if >
+			<!-- need to create new db for reporting if needed -->
+			<not><equals arg1="${DB_URL}" arg2="${DB_REPORTING_URL}" /></not>
+			<then>
+				<sql
+				driver="${DB_DRIVER}"
+				url="${DB_ADMIN_URL}"
+				userid="${DB_ADMIN_USERNAME}"
+				password="${DB_ADMIN_PASSWORD}" delimiter="GO" autocommit="true" >
+				<classpath refid="master-classpath" />
+					<transaction  src="${hudson.setupReportingdatabase.file}" />
+				</sql>
+				<echo>Executing Reporting Table SQL </echo>
+				
+				<sql
+					driver="${DB_DRIVER}"
+					url="${DB_REPORTING_URL}"
+					userid="${DB_REPORTING_USERNAME}"
+					password="${DB_REPORTING_PASSWORD}" delimiter="GO" autocommit="true" >
+						<classpath refid="master-classpath" />
+						<transaction  src="${hudson.mandatoryreportingtable.file}" />
+						
+				</sql>
+				<echo>Executing DDL Reporting SQL </echo>
+				
+				<sql
+					driver="${DB_DRIVER}"
+					url="${DB_REPORTING_URL}"
+					userid="${DB_REPORTING_USERNAME}"
+					password="${DB_REPORTING_PASSWORD}" delimiter="GO" autocommit="true" >
+						<classpath refid="master-classpath" />
+						<transaction  src="${hudson.function.reporting.file}" />
+						
+				</sql>
+				<echo>Executing DML for Reporting SQL </echo>
+				<sql
+							driver="${DB_DRIVER}"
+							url="${DB_REPORTING_URL}"
+							userid="${DB_REPORTING_USERNAME}"
+							password="${DB_REPORTING_PASSWORD}" delimiter=";" autocommit="true" onerror="continue" >
+							<classpath refid="master-classpath" />
+							<transaction  src="${hudson.requiredReportingdata.file}" />
+						
+				</sql>
+			</then>
+			
+		</if>
+		
+		<echo> Run ETL on First Deployment</echo>
+		<trycatch property="err_message">
+			<try>
+				<sql
+				driver="${DB_DRIVER}"
+				url="${DB_ADMIN_URL}"
+				userid="${DB_ADMIN_USERNAME}"
+				password="${DB_ADMIN_PASSWORD}" delimiter="GO" autocommit="true" >
+				<classpath refid="master-classpath" />
+					
+					<transaction>
+							use msdb
+							GO
+							Exec dbo.sp_sp_start_job_wait   '${ETL_DAILY_NAME}'
+					</transaction>
+					<transaction>
+							use msdb
+							GO
+							Exec dbo.sp_sp_start_job_wait   '${ETL_MONTHLY_NAME}'
+					</transaction>
+				</sql>
+			</try>
+			<catch>
+				<echo>could not deploy ETL tables</echo>
+			</catch>
+		</trycatch>
+	</target>
+
+	<target name="ciDeployServer" depends="clean, ciDeployDatabase">
+		<antcall target="deploywar"></antcall>
+	</target>
+
+	<target name="ciDeployApp" depends="clean, build, generateDDL, prepareETL">
+		<antcall target="deploywar"></antcall>
+	</target>
+	 
+	<target name="-ciValidateDeployDatabase">
+		<condition property="all.required.hudson.file.present">
+			<and>
+				<available file="${hudson.setupdatabase.file}" type="file" />
+				<available file="${hudson.mandatatorytable.file}" type="file" />
+				<available file="${hudson.nonhbmtable.file}" type="file" />
+				<available file="${hudson.additionalddl.file}" type="file" />
+				<available file="${hudson.function.file}" type="file" />
+				<available file="${hudson.view.file}" type="file" />
+				<available file="${hudson.requireddata.file}" type="file" />
+			</and>
+		</condition>
+		<fail unless="all.required.hudson.file.present" message="Required hudson file are missing, please run ciSetupDatabaseIntegrationFile task"/>
+	</target>
+
+	<target name="ciSetupConfidentalConfiguration">
+		<condition property="confidental.file.present" >
+			<available file="c:/${deploy.name}_server.properties" />
+		</condition>
+		<if>
+			<isset property="confidental.file.present"/>
+			<then>
+				<copy tofile="${deploy.dir}/${deploy.name}_server.properties" overwrite="true" file="c:/${deploy.name}_server.properties" />
+				<echo>Confidental file present</echo>
+			</then>
+			<else>
+				<echo>Confidental file not present, use default from repository</echo>
+			</else>
+		</if>
+	</target>
+	
+	<target name="sendEmail" description="Send Notification Email">
+        <property name="email.subject" value="${SEND_MAIL_SUBJECT}"></property>
+        <echo>using ${MAIL_SMTP_HOST}</echo>
+        <echo>subject ${SEND_MAIL_SUBJECT}</echo>
+        <echo>from ${SEND_MAIL_FROM}</echo>
+        <echo>replyto ${SEND_MAIL_REPLYTO}</echo>
+        <echo>to ${SEND_MAIL_TO}</echo>
+        <echo>cc ${SEND_MAIL_CC}</echo>
+        <echo>message:</echo>
+        <echo>${SEND_MAIL_MSG}</echo>
+        <mail
+            mailhost="${MAIL_SMTP_HOST}"
+            subject="${email.subject}"
+            tolist="${SEND_MAIL_TO}"
+            cclist="${SEND_MAIL_CC}"
+            failonerror="false">
+            <from address="${SEND_MAIL_FROM}"/>
+            <replyto address="${SEND_MAIL_REPLYTO}"/>
+            <message>${SEND_MAIL_MSG}</message>
+        </mail>
+    </target>
+	<!-- =========================================== -->
+    <!--     End of Continuous Integration tasks     -->
+    <!-- =========================================== -->
+	
+	
+	<!-- =========================================== -->
+    <!--        Quartz Scheduller tasks 		 	 -->
+    <!-- =========================================== -->
+	<target name="runQuartz" depends="prepareQuartz, quartzBuild" description="running quartz schedule independently">
+		<java classname="com.mitrais.kms.util.QuartzStandAlone" fork="true">	    		
+	    	<sysproperty key="kms.springconf"
+	    		value="${exploded.dir}\WEB-INF\classes\applicationContext-security.xml;${exploded.dir}\WEB-INF\classes\ohsApplicationContext-hibernate.xml;${exploded.dir}\WEB-INF\classes\applicationContext-hibernate.xml"
+	    	/>	    		
+	    	<classpath>
+	    		<fileset dir="${lib.dir}" includes="*.jar"/>
+	    		<pathelement location="${exploded.dir}/WEB-INF/classes"/>
+	    	</classpath>
+	    </java>
+		<delete file="${quartz_property.file}"/>
+	</target>	
+		
+	<target name="prepareQuartz" description="Preparing Quartz Properties">
+		<delete file="${quartz_property.file}"/>
+		<delete file="${exploded.dir}\WEB-INF\classes\applicationContext-hibernate.xml"/>
+		<copy file="${property.file}" tofile="${quartz_property.file}"/>			
+		<replace file="${quartz_property.file}" token="QUARTZ_TRIGGER=" value=""/>			
+		<concat destfile="${quartz_property.file}" append="true">
+			<filelist dir="../kmsv30/src/resources" files="initQuartzDetailToAppCont.txt"/>
+		</concat>
+			
+	    <filterset id="quartz.filter">
+	    	<filtersfile file="quartz_deploy_env_test_sql_server.properties"/>
+	        	<filter token="VERSION" value="${version}"/>
+	        	<filter token="BUILD_NUMBER" value="40"/>
+	    	</filterset>
+	</target>
+	
+	<target name="quartzBuild" depends="compile" description="build the whole application">
+	    <!--<buildnumber/>-->
+	    <!-- Filter for text replacement -->
+	    <filterset id="quartz.filter">
+	        <filtersfile file="quartz_deploy_env_test_sql_server.properties"/>
+	        <filter token="VERSION" value="${version}"/>
+	        <filter token="BUILD_NUMBER" value="40"/>
+	    </filterset>
+
+	    <!-- copying resource and hbm.xml files -->
+	    <copy todir="${exploded.dir}/WEB-INF/classes" preservelastmodified="true">
+	        <fileset dir="${resources.dir}" includes="*.*" excludes="*.properties,*.tld,*.txt,web.xml,struts-config.xml,validation.xml,validator-rules.xml,EllipseDeployment.xml"/>
+	        <filterset refid="quartz.filter"/>
+	    </copy>    	
+	</target>
+	<!-- =========================================== -->
+    <!--     End of Quartz Scheduller tasks     	 -->
+    <!-- =========================================== -->
+	
+	
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties" classpath="${devlib.dir}/ant-contrib.jar"/>
+	
+	<target name="settingConfigurableFields" depends="compile">
+		<mkdir dir="${generated.configurable}"/>
+		<mkdir dir="${generated.configurable}/web"/>
+			<mkdir dir="${generated.configurable}/resources"/>
+		<copy todir="${generated.configurable}" preservelastmodified="false" overwrite="true">
+			<fileset dir="src" includes="${CONFIGURABLE_FIELDS_SC}"/>
+		</copy>
+		<taskdef name="configurablefields" classname="com.mitrais.kms.anttask.ConfigurableFieldsTask">
+			<classpath refid="master-classpath" />
+		</taskdef>
+		<configurablefields configFile="${deploy.dir}/${CONFIGURABLE_FIELDS_SETTING}">
+			<fileset dir="${generated.configurable}" includes="**/*.*"/>
+		</configurablefields>
+	</target>
+
+</project>
